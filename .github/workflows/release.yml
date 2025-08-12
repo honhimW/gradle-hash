@@ -159,14 +159,14 @@ jobs:
   
   update_homebrew:
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build, build-aarch64]
     steps:
     - name: Echo
       run: |
         echo "linux_amd64_sha256": "${{ needs.build.outputs.linux_amd64_sha256 }}"
         echo "linux_aarch64_sha256": "${{ needs.build-aarch64.outputs.linux_aarch64_sha256 }}"
-        echo "mac_sha256": "${{ needs.build.outputs.linux_mac_sha256 }}"
-        echo "windows_amd64_sha256": "${{ needs.build.outputs.windows_sha256 }}"
+        echo "mac_sha256": "${{ needs.build.outputs.mac_sha256 }}"
+        echo "windows_amd64_sha256": "${{ needs.build.outputs.windows_amd64_sha256 }}"
 
     - name: Update Homebrew Formula
       run: |
