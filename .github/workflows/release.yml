@@ -56,7 +56,7 @@ jobs:
       run: cargo build --release
     - name: Package (Linux)
       if: matrix.os == 'ubuntu-latest'
-      run: tar -czvf ./target/release/ratisui-linux-amd64.tar.gz LICENSE README.md -C ./target/release gradle-hash
+      run: tar -czvf ./target/release/gradle-hash-linux-amd64.tar.gz -C ./target/release gradle-hash
     
     - name: Upload Release Asset (Linux)
       if: matrix.os == 'ubuntu-latest'
