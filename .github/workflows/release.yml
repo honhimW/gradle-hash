@@ -45,7 +45,6 @@ jobs:
         rust: [stable]
     outputs:
       linux_amd64_sha256: ${{ steps.linux_amd64.outputs.sha256 }}
-      linux_aarch64_sha256: ${{ steps.linux_aarch64.outputs.sha256 }}
       mac_sha256: ${{ steps.mac.outputs.sha256 }}
       windows_amd64_sha256: ${{ steps.windows.outputs.sha256 }}
 
