@@ -41,8 +41,13 @@ jobs:
     needs: create_release
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         rust: [stable]
+    outputs:
+      linux_amd64_sha256: ${{ steps.linux_amd64.outputs.sha256 }}
+      linux_aarch64_sha256: ${{ steps.linux_aarch64.outputs.sha256 }}
+      mac_sha256: ${{ steps.mac.outputs.sha256 }}
+      windows_amd64_sha256: ${{ steps.windows.outputs.sha256 }}
 
     steps:
     - name: Checkout code
@@ -55,9 +60,30 @@ jobs:
     - name: Build
       run: cargo build --release
     - name: Package (Linux)
+      id: linux_amd64
       if: matrix.os == 'ubuntu-latest'
-      run: tar -czvf ./target/release/gradle-hash-linux-amd64.tar.gz -C ./target/release gradle-hash
+      run: |
+        tar -czvf ./target/release/linux-amd64.tar.gz LICENSE README.md -C ./target/release gradle-hash
+        ARCHIVE_SHA256=$(sha256sum ./target/release/linux-amd64.tar.gz | awk '{print $1}')
+        echo "sha256=$ARCHIVE_SHA256" >> $GITHUB_OUTPUT
+
     
+    - name: Package (Mac)
+      id: mac
+      if: matrix.os == 'macos-latest'
+      run: |
+        tar -czvf ./target/release/mac.tar.gz LICENSE README.md -C ./target/release gradle-hash
+        ARCHIVE_SHA256=$(shasum -a 256 ./target/release/mac.tar.gz | awk '{print $1}')
+        echo "sha256=$ARCHIVE_SHA256" >> $GITHUB_OUTPUT
+
+    - name: Package (Windows)
+      id: windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        Compress-Archive -Path '.\README.md', '.\LICENSE', '.\target\release\gradle-hash.exe' -DestinationPath '.\target\release\windows-amd64.zip'
+        $ARCHIVE_SHA256 = (Get-FileHash -Algorithm SHA256 -Path ".\target\release\windows-amd64.zip").Hash
+        "sha256=$ARCHIVE_SHA256" >> $env:GITHUB_OUTPUT
+      
     - name: Upload Release Asset (Linux)
       if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-release-asset@v1
@@ -65,6 +91,92 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ./target/release/gradle-hash-linux-amd64.tar.gz
-        asset_name: gradle-hash-linux-amd64.tar.gz
+        asset_path: ./target/release/linux-amd64.tar.gz
+        asset_name: linux-amd64.tar.gz
         asset_content_type: application/octet-stream
+    - name: Upload Release Asset (Mac)
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ./target/release/mac.tar.gz
+        asset_name: mac.tar.gz
+        asset_content_type: application/octet-stream
+        
+    - name: Upload Release Asset (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: .\target\release\windows-amd64.zip
+        asset_name: windows-amd64.zip
+        asset_content_type: application/octet-stream
+
+
+  build-aarch64:
+    runs-on: ${{ matrix.os }}
+    needs: create_release
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust: [stable]
+    outputs:
+      linux_aarch64_sha256: ${{ steps.linux_aarch64.outputs.sha256 }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: rust-toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: stable
+        target: aarch64-unknown-linux-gnu
+    - name: Cargo
+      uses: actions-rs/cargo@v1
+      with:
+          use-cross: true
+          command: build
+          args: --target aarch64-unknown-linux-gnu --release
+    - name: Package (Linux-aarch64)
+      id: linux_aarch64
+      run: |
+        tar -czvf ./target/aarch64-unknown-linux-gnu/release/linux-aarch64.tar.gz LICENSE README.md -C ./target/aarch64-unknown-linux-gnu/release gradle-hash
+        ARCHIVE_SHA256=$(sha256sum ./target/release/linux-aarch64.tar.gz | awk '{print $1}')
+        echo "sha256=$ARCHIVE_SHA256" >> $GITHUB_OUTPUT
+        
+    - name: Upload Release Asset (Linux-aarch64)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ./target/aarch64-unknown-linux-gnu/release/linux-aarch64.tar.gz
+        asset_name: linux-aarch64.tar.gz
+        asset_content_type: application/octet-stream
+  
+  update_homebrew:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+    - name: Echo
+      run: |
+        echo "linux_amd64_sha256": "${{ needs.build.outputs.linux_amd64_sha256 }}"
+        echo "linux_aarch64_sha256": "${{ needs.build-aarch64.outputs.linux_aarch64_sha256 }}"
+        echo "mac_sha256": "${{ needs.build.outputs.linux_mac_sha256 }}"
+        echo "windows_amd64_sha256": "${{ needs.build.outputs.windows_sha256 }}"
+
+    - name: Update Homebrew Formula
+      run: |
+        curl -X POST https://api.github.com/repos/honhimW/homebrew-tap/dispatches \
+            -H "Accept: application/vnd.github.everest-preview+json" \
+            -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+            -d '{"event_type": "update-from-gradle-hash", "client_payload": {
+              "version": "${{ github.event.inputs.major_version }}",
+              "linux_amd64_sha256": "${{ needs.build.outputs.linux_amd64_sha256 }}",
+              "linux_aarch64_sha256": "${{ needs.build-aarch64.outputs.linux_aarch64_sha256 }}",
+              "mac_sha256": "${{ needs.build.outputs.linux_mac_sha256 }}",
+              "windows_amd64_sha256": "${{ needs.build.outputs.windows_sha256 }}"
+            }}'
