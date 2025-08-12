@@ -98,7 +98,7 @@ jobs:
       uses: dtolnay/rust-toolchain@v1
       with:
         toolchain: stable
-        target: aarch64-unknown-linux-gnu
+        target: x86_64-apple-darwin
     - name: Cargo
       uses: actions-rs/cargo@v1
       with:
