@@ -104,6 +104,6 @@ jobs:
               "version": "${{ github.event.inputs.major_version }}",
               "linux_amd64_sha256": "${{ needs.build.outputs.linux_amd64_sha256 }}",
               "linux_aarch64_sha256": "${{ needs.build-aarch64.outputs.linux_aarch64_sha256 }}",
-              "mac_sha256": "${{ needs.build.outputs.linux_mac_sha256 }}",
-              "windows_amd64_sha256": "${{ needs.build.outputs.windows_sha256 }}"
+              "mac_sha256": "${{ needs.build.outputs.mac_sha256 }}",
+              "windows_amd64_sha256": "${{ needs.build.outputs.windows_amd64_sha256 }}"
             }}'
