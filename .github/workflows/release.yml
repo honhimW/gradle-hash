@@ -108,7 +108,7 @@ jobs:
     - name: Package (Mac-intel)
       id: mac_intel
       run: |
-        tar -czvf ./target/x86_64-apple-darwin/release/mac-intel.tar.gz LICENSE README.md -C ./target/aarch64-unknown-linux-gnu/release gradle-hash
+        tar -czvf ./target/x86_64-apple-darwin/release/mac-intel.tar.gz LICENSE README.md -C ./target/x86_64-apple-darwin/release gradle-hash
         ARCHIVE_SHA256=$(sha256sum ./target/x86_64-apple-darwin/release/mac-intel.tar.gz | awk '{print $1}')
         echo "sha256=$ARCHIVE_SHA256" >> $GITHUB_OUTPUT
 
